@@ -1,13 +1,20 @@
 import { useEffect, useState } from "react";
 import apiClient from "../services/api-client";
-import { CanceledError } from "axios";
+import { AxiosRequestConfig, CanceledError } from "axios";
 
 interface FetchResponse<T> {
   count: number;
   results: T[];
 }
 
-const useData = <T>(endpoint: string) => {
+// Note: if you declare an optional parameter, all the parameters after it must be optional as well
+// Here we are saying that requestConfig is an optional parameter, so
+// whatever other params we declare after it must be optional as well
+const useData = <T>(
+  endpoint: string,
+  requestConfig?: AxiosRequestConfig,
+  deps?: any[]
+) => {
   // State object for the games
   const [data, setData] = useState<T[]>([]);
 
@@ -17,31 +24,37 @@ const useData = <T>(endpoint: string) => {
   // Loading State
   const [isLoading, setLoading] = useState(false);
 
-  useEffect(() => {
-    // This is a controller that will allow us to cancel the request
-    const controller = new AbortController();
+  useEffect(
+    () => {
+      // This is a controller that will allow us to cancel the request
+      const controller = new AbortController();
 
-    setLoading(true); // LOADING
+      setLoading(true); // LOADING
 
-    apiClient
-      .get<FetchResponse<T>>(endpoint, {
-        signal: controller.signal,
-      })
-      .then((res) => {
-        setData(res.data.results);
-        setLoading(false); // LOADING
-      })
-      .catch((err) => {
-        // If the request was cancelled, we don't want to set the error
-        if (err instanceof CanceledError) return;
+      apiClient
+        .get<FetchResponse<T>>(endpoint, {
+          signal: controller.signal,
+          // if we don't pass a requestConfig, signal will go by default
+          // If we have a requestConfig, we want to merge it with the default config
+          ...requestConfig,
+        })
+        .then((res) => {
+          setData(res.data.results);
+          setLoading(false); // LOADING
+        })
+        .catch((err) => {
+          // If the request was cancelled, we don't want to set the error
+          if (err instanceof CanceledError) return;
 
-        setError(err.message);
-        setLoading(false); // LOADING
-      });
+          setError(err.message);
+          setLoading(false); // LOADING
+        });
 
-    // Cleanup function that will cancel the request
-    return () => controller.abort();
-  }, []);
+      // Cleanup function that will cancel the request
+      return () => controller.abort();
+    },
+    deps ? [...deps] : []
+  );
 
   return { data, error, isLoading };
 };
