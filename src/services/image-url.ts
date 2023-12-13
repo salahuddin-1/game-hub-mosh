@@ -1,8 +1,8 @@
-import React from "react";
+import noImage from "../assets/no_image.jpeg";
 
 const getCroppedImageUrl = (url: string) => {
   if (!url) {
-    return "";
+    return noImage;
   }
 
   const target = "media/";
